@@ -83,7 +83,7 @@ Follows principle: "Many short trajectories > few long ones"
 Expected Walltime:
 ------------------
 8× A100 (80 GB):  ~8-10 hours  (FASTEST - 80 parallel jobs, 4.8 H100-eq compute)
-2× B200 (180 GB): ~8-10 hours  (with ramdisk auto-enabled if 1000+ GB RAM)
+2× B200 (180 GB): ~8-10 hours  (with ramdisk auto-enabled if 700+ GB RAM)
 2× B200 (180 GB): ~10-12 hours (without ramdisk, 44 parallel, 4.0 H100-eq)
 4× H100 (80 GB):  ~10-12 hours (40 parallel jobs, 4.0 H100-eq compute)
 1× B200:          ~20-22 hours (22 parallel jobs, 2.0 H100-eq compute)

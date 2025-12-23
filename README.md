@@ -46,7 +46,7 @@ MD_Portable/
 - Local NVMe storage for output
 
 **Also excellent (~8-10 hours with ramdisk):**
-- 2× NVIDIA B200 GPUs (180 GB each) - 52+ CPUs, 1000+ GB RAM
+- 2× NVIDIA B200 GPUs (180 GB each) - 52+ CPUs, 700+ GB RAM
   - **Auto-enables ramdisk mode if >600 GB RAM** (20-30% speedup!)
 - 4× NVIDIA H100 GPUs (80 GB each) - 104 CPUs
 
@@ -117,7 +117,7 @@ Checks:
 
 **Expected runtime (250 trajectories):**
 - **8× A100: ~8-10 hours** (FASTEST - 80 parallel, 4.8 H100-eq compute)
-- **2× B200: ~8-10 hours** with ramdisk (44 parallel, 4.0 H100-eq, 1000+ GB RAM)
+- **2× B200: ~8-10 hours** with ramdisk (44 parallel, 4.0 H100-eq, 700+ GB RAM)
 - 2× B200: ~10-12 hours without ramdisk (if <600 GB RAM)
 - 4× H100: ~10-12 hours (40 parallel, 4.0 H100-eq compute)
 - 1× B200: ~20-22 hours (22 parallel, 2.0 H100-eq compute)

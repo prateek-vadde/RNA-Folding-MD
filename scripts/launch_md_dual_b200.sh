@@ -33,8 +33,9 @@ detect_optimal_storage() {
     echo "System RAM: ${RAM_GB} GB"
     echo "/dev/shm size: ${SHM_SIZE_GB} GB"
 
-    # Strategy: Use ramdisk if we have >600 GB RAM (allows 500 GB output + 100 GB buffer)
-    if [ "$RAM_GB" -gt 600 ] && [ "$SHM_SIZE_GB" -gt 400 ] && [ -w "/dev/shm" ]; then
+    # Strategy: Use ramdisk if we have >600 GB RAM (allows ~280 GB output + buffer)
+    # /dev/shm is typically 50% of RAM, so 700 GB RAM = 350 GB /dev/shm
+    if [ "$RAM_GB" -gt 600 ] && [ "$SHM_SIZE_GB" -gt 250 ] && [ -w "/dev/shm" ]; then
         echo ""
         echo "🚀 RAMDISK MODE ENABLED! (20-30% speedup expected)"
         echo "   Writing to: /dev/shm/md_output (memory speed: ~100 GB/s)"
