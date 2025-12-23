@@ -1,0 +1,15 @@
+# MD simulation output (created during runtime)
+output/
+*.dcd
+*.coor
+*.vel
+*.xsc
+*.xst
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*~
+.DS_Store

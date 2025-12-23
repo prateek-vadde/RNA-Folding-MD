@@ -1,0 +1,106 @@
+RNA Folding MD Systems - Regime Mapping (RIGOROUS PROTOCOL)
+============================================================
+
+Force Field: AMBER14 RNA.OL3 (ff99bsc0 + chiOL3 corrections)
+Solvent: TIP3P water, 9 Å buffer
+Ions: Neutralized with Na+
+Cutoffs: 12.0 Å (rigorous, extended from 9.0 Å)
+PME: Grid spacing 0.8-1.0 Å, interpolation order 6
+Total Systems: 25 (13 regimes, 2 temperatures each except regime8)
+
+Regime Assignments:
+-------------------
+Regime  PDB ID          Nucleotides  Size     Temperatures  Notes
+------  --------------  -----------  -------  ------------  -----
+0       1RC7            40           small    300K, 350K
+1       1A60            44           small    300K, 350K    NMR (MODEL 0 only)
+2       165D            16           tiny     300K, 350K
+3       1K8W            21           small    300K, 350K
+4       1LNG            97           medium   300K, 350K
+5       1E7K            34           medium   300K, 350K
+6       1KXK            70           medium   300K, 350K    No terminal phosphates
+7       1IDV            10           tiny     300K, 350K    NMR (MODEL 0 only)
+8       regime8_domain  180          xlarge   300K only     Extracted domain
+9       1DRZ            72           medium   300K, 350K
+10      1MJI            68           medium   300K, 350K    No terminal phosphates
+11      1HQ1            48           medium   300K, 350K
+12      1KQ2            7            tiny     300K, 350K    Smallest    
+
+Rigorous Equilibration Protocol:
+---------------------------------
+Stage 1: Extended minimization (10,000 steps)
+  Purpose: Remove all clashes and bad contacts
+  Constraints: None
+  
+Stage 2: Restrained heating (200 ps)
+  Purpose: Heat solvent while keeping RNA structure fixed
+  Constraints: RNA heavy atoms restrained at 5.0 kcal/mol/Ų
+  Temperature: Gradual heating from 0.5×T to T
+  
+Stage 3: NVT equilibration (500 ps)
+  Purpose: Equilibrate system at constant volume
+  Constraints: RNA weakly restrained at 2.0 kcal/mol/Ų
+  Ensemble: NVT (constant volume)
+  
+Stage 4: NPT equilibration (500 ps)
+  Purpose: Equilibrate pressure and remove constraints
+  Constraints: Gradually reduced from 1.0 → 0.0
+  Ensemble: NPT (constant pressure)
+
+Total equilibration time: 1.2 ns per trajectory
+
+Production Simulation:
+----------------------
+- 10 replicas per system (different random seeds)
+- 20 ns production per replica
+- 21.2 ns total per trajectory (including equilibration)
+- Total: 250 trajectories
+- Total production time: 5.0 µs
+- Total simulation time (incl. equil): 5.3 µs
+- Output: 10,000 frames per trajectory (2 ps spacing)
+- Total frames: 2,500,000
+
+Performance Optimization:
+-------------------------
+- Smart job scheduling: Large systems run first
+- Memory-aware GPU assignment
+- CUDA MPS for efficient GPU sharing
+- Auto resource detection (GPUs, CPUs, RAM)
+- CUDA SOA integration enabled
+- Optimized patch dimensions
+
+Research Objective:
+-------------------
+Part III.4 - Attractor identification through empirical dynamics:
+  • Return probability measurement
+  • Residence time in basins
+  • Perturbation response (temperature variation)
+  • Regime stability validation
+
+Follows principle: "Many short trajectories > few long ones"
+10 replicas × 20 ns >> 1 replica × 200 ns for basin statistics
+
+Expected Walltime:
+------------------
+2× B200 (180 GB): ~10-11 hours
+4× H100 (80 GB):  ~6-7 hours
+1× B200:          ~20-22 hours
+
+Rigor Improvements Over v1.0:
+------------------------------
+✅ 4-stage equilibration (was: 1-stage)
+✅ 10,000 minimization steps (was: 1,000)
+✅ Restrained heating protocol (was: hot start)
+✅ 12 Å cutoffs (was: 9 Å)
+✅ PME grid 0.8-1.0 Å (was: 1.0 Å only)
+✅ Smart job scheduling (was: round-robin)
+✅ Auto resource detection (was: hardcoded)
+✅ Memory-aware GPU assignment (was: random)
+
+Bug Fixes Applied:
+-------------------
+✅ NMR multi-model bug fixed (v2.1)
+   - 1A60: Was simulating 24 models (1056 nt total) → Now MODEL 0 only (44 nt)
+   - 1IDV: Was simulating 10 models (100 nt total) → Now MODEL 0 only (10 nt)
+   - Fixed by modifying convert_cif_to_pdb.py to extract MODEL 0 only
+   - AMBER topology files regenerated with correct structures

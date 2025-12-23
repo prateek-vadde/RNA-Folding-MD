@@ -1,0 +1,130 @@
+#############################################################
+## NAMD Config: regime2_165D_300K Rep 5
+## RIGOROUS + PERFORMANCE OPTIMIZED
+#############################################################
+
+#############################################################
+## INPUT
+#############################################################
+amber yes
+parmfile ../topology_files/regime2_165D_300K.prmtop
+ambercoor ../topology_files/regime2_165D_300K.inpcrd
+temperature 300
+seed 17479
+
+#############################################################
+## OUTPUT - I/O OPTIMIZED
+#############################################################
+outputName regime2_165D_300K_rep05
+binaryoutput yes
+binaryrestart yes
+restartfreq 5000
+dcdfreq 5000
+xstFreq 5000
+outputEnergies 25000
+outputTiming 50000
+flushOutput yes
+
+#############################################################
+## INTEGRATION
+#############################################################
+timestep 2.0
+rigidBonds all
+nonbondedFreq 1
+fullElectFrequency 2
+stepspercycle 20
+
+#############################################################
+## FORCE FIELD
+#############################################################
+exclude scaled1-4
+1-4scaling 0.833333
+switching on
+switchdist 10.0
+cutoff 12.0
+pairlistdist 12.0
+
+#############################################################
+## PME - PERFORMANCE TUNED
+#############################################################
+PME yes
+PMEGridSpacing 0.8
+PMEInterpOrder 6
+
+#############################################################
+## TEMPERATURE
+#############################################################
+langevin on
+langevinDamping 1.0
+langevinTemp 300
+langevinHydrogen off
+
+#############################################################
+## PRESSURE
+#############################################################
+useGroupPressure yes
+useFlexibleCell no
+useConstantArea no
+langevinPiston on
+langevinPistonTarget 1.01325
+langevinPistonPeriod 100.0
+langevinPistonDecay 50.0
+langevinPistonTemp 300
+
+#############################################################
+## PERFORMANCE OPTIMIZATIONS
+#############################################################
+CUDASOAintegrate on
+margin 2.5
+patchDimension 16.0
+
+#############################################################
+## RIGOROUS EQUILIBRATION
+#############################################################
+
+print "EQUILIBRATION STAGE 1: Minimization (10000 steps)"
+minimize 10000
+
+print "EQUILIBRATION STAGE 2: Restrained heating to 300K (0.2 ns)"
+constraints on
+consref ../topology_files/regime2_165D_300K.inpcrd
+conskfile ../topology_files/regime2_165D_300K.inpcrd
+conskcol B
+constraintScaling 5.0
+
+velocity reassign 150.0
+run 50000
+
+for {set i 0} {$i < 10} {incr i} {
+    set temp [expr 300 * 0.5 + (300 * 0.5) * $i / 10.0]
+    langevinTemp $temp
+    langevinPistonTemp $temp
+    run [expr 100000 / 20]
+}
+
+print "EQUILIBRATION STAGE 3: NVT equilibration (0.5 ns)"
+langevinPiston off
+constraintScaling 2.0
+run 250000
+
+print "EQUILIBRATION STAGE 4: NPT equilibration (0.5 ns)"
+langevinPiston on
+constraintScaling 1.0
+run 125000
+
+constraints off
+run 125000
+
+#############################################################
+## PRODUCTION MD
+#############################################################
+print "PRODUCTION: 20 ns at 300K"
+
+dcdfreq 5000
+xstFreq 5000
+restartfreq 5000
+outputEnergies 5000
+
+run 10000000
+
+print "COMPLETE: regime2_165D_300K_rep05"
