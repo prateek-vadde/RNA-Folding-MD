@@ -1,0 +1,163 @@
+================================================================================
+IMPORTANT - READ BEFORE RUNNING!
+================================================================================
+
+QUICK START (3 steps):
+----------------------
+1. Install NAMD 3.0+ (x86_64 with CUDA support)
+2. Clone this repo and set NAMD_BIN
+3. Run ./scripts/launch_md_dual_b200.sh
+
+BUT FIRST - RUN THIS 5-MINUTE TEST:
+====================================
+
+Before committing to the full 10-hour run, verify everything works:
+
+Step 1: Verify setup
+--------------------
+cd scripts
+./verify_setup.sh
+
+This checks:
+- NAMD binary exists and runs
+- All 50 topology files present
+- All 250 NAMD configs generated
+- GPU availability and CUDA version
+- Disk space (~500 GB needed)
+
+Step 2: Test run (2-3 minutes)
+-------------------------------
+cd ../namd_configs
+$NAMD_BIN regime12_1KQ2_300K_rep00.namd
+
+This runs the smallest system (7 nucleotides) through full equilibration
+and a tiny bit of production. If this completes successfully with
+"COMPLETE: regime12_1KQ2_300K_rep00" in the output, you're good!
+
+Step 3: If test passes → Run full simulation
+---------------------------------------------
+cd ../scripts
+./launch_md_dual_b200.sh
+
+Expected runtime: ~8-10 hours on 2× B200 with 700+ GB RAM
+Expected cost: ~$114 total
+
+================================================================================
+SYSTEM REQUIREMENTS (Auto-Detected):
+================================================================================
+
+Essential:
+✅ NAMD 3.0+ compiled with CUDA support for x86_64
+✅ CUDA 12.6+ (for B200 GPU support)
+✅ 2× NVIDIA B200 GPUs (or any multi-GPU setup)
+✅ 500 GB free disk space for output
+
+For maximum performance (ramdisk mode):
+✅ 700+ GB RAM (auto-enables ramdisk: /dev/shm)
+   - Launcher detects this automatically
+   - Writes at 100 GB/s (vs 3-7 GB/s to NVMe)
+   - Saves 20-30% time (~8-10 hrs vs ~10-12 hrs)
+
+================================================================================
+POTENTIAL ISSUES & SOLUTIONS:
+================================================================================
+
+Issue: "NAMD not found"
+Solution:
+  which namd3
+  export NAMD_BIN=/full/path/to/namd3
+
+Issue: "No CUDA support"
+Solution:
+  namd3 +devices
+  # Should show your GPUs - if not, NAMD wasn't compiled with CUDA
+
+Issue: "CUDA version too old"
+Solution:
+  nvidia-smi  # Check driver version
+  # Need CUDA 12.6+ for B200
+
+Issue: "Out of disk space"
+Solution:
+  df -h  # Check available space
+  # Need ~500 GB free at OUTPUT_DIR
+  # Or set: export OUTPUT_DIR=/path/to/larger/disk
+
+Issue: "/dev/shm full"
+Solution:
+  # Launcher auto-falls back to NVMe if ramdisk fails
+  # Or disable ramdisk: export OUTPUT_DIR=/path/to/nvme
+
+Issue: "Permission denied on /dev/shm"
+Solution:
+  # Launcher auto-falls back to NVMe
+  # You'll get 10-12 hrs instead of 8-10 hrs (still fine!)
+
+================================================================================
+WHAT THE LAUNCHER DOES AUTOMATICALLY:
+================================================================================
+
+✅ Detects system resources (GPUs, CPUs, RAM)
+✅ Calculates optimal parallelization (44 jobs on 2× B200)
+✅ Enables ramdisk mode if >600 GB RAM detected
+✅ Sorts jobs by size (large systems first)
+✅ Enables CPU pinning for each job
+✅ Sets up CUDA MPS for efficient GPU sharing
+✅ Writes output to fastest storage available
+✅ Copies from ramdisk → permanent storage when done
+✅ Verifies file counts before cleanup
+✅ Logs everything to output/*.log
+
+You can safely walk away for 10 hours!
+
+================================================================================
+MONITORING PROGRESS (Optional):
+================================================================================
+
+During the run:
+  # Check how many trajectories completed
+  watch -n 60 'ls output/*.dcd | wc -l'
+
+  # Check for failures
+  grep -l "ERROR\|FATAL" output/*.log
+
+  # Monitor GPU usage
+  watch nvidia-smi
+
+After completion:
+  # All output will be in output/ directory
+  # 250 DCD files (trajectories)
+  # 250 log files
+  # Total: ~500 GB
+
+================================================================================
+FINAL CHECKLIST BEFORE 10-HOUR RUN:
+================================================================================
+
+[ ] NAMD 3.0+ installed with CUDA support
+[ ] CUDA 12.6+ drivers installed
+[ ] 2× B200 GPUs detected (nvidia-smi)
+[ ] 500+ GB free disk space
+[ ] Test run completed successfully
+[ ] export NAMD_BIN=/path/to/namd3 is set
+[ ] You're ready to walk away for 10 hours
+
+If all checked → Run: ./scripts/launch_md_dual_b200.sh
+
+================================================================================
+COST ESTIMATE:
+================================================================================
+
+2× B200 @ $10.38/hour × 9 hours = ~$93-114 total
+(Actual time may vary 8-10 hours depending on system load)
+
+This is the CHEAPEST option that still achieves fast runtime!
+
+================================================================================
+QUESTIONS?
+================================================================================
+
+See README.md for full documentation
+See SYSTEM_INFO.txt for simulation details
+
+For issues: https://github.com/prateek-vadde/RNA-Folding-MD/issues
