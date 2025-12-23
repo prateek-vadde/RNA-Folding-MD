@@ -1,6 +1,6 @@
 #############################################################
 ## NAMD Config: regime7_1IDV_300K Rep 1
-## RIGOROUS + PERFORMANCE OPTIMIZED
+## RIGOROUS + MAXIMUM I/O OPTIMIZED
 #############################################################
 
 #############################################################
@@ -10,20 +10,22 @@ amber yes
 parmfile ../topology_files/regime7_1IDV_300K.prmtop
 ambercoor ../topology_files/regime7_1IDV_300K.inpcrd
 temperature 300
-seed 13966
+seed 13945
 
 #############################################################
-## OUTPUT - I/O OPTIMIZED
+## OUTPUT - MAXIMUM I/O OPTIMIZED
 #############################################################
 outputName regime7_1IDV_300K_rep01
 binaryoutput yes
 binaryrestart yes
-restartfreq 5000
-dcdfreq 5000
+restartfreq 50000
+dcdfreq 1000
 xstFreq 5000
-outputEnergies 25000
-outputTiming 50000
+outputEnergies 5000
+outputTiming 10000
 flushOutput yes
+wrapAll off
+wrapNearest off
 
 #############################################################
 ## INTEGRATION
@@ -120,9 +122,9 @@ run 125000
 #############################################################
 print "PRODUCTION: 20 ns at 300K"
 
-dcdfreq 5000
+dcdfreq 1000
 xstFreq 5000
-restartfreq 5000
+restartfreq 50000
 outputEnergies 5000
 
 run 10000000

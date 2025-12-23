@@ -39,17 +39,21 @@ MD_Portable/
   - Provides optimal load balancing and job management
 
 ### Hardware (Auto-Detected)
-**Recommended:**
-- 2× NVIDIA B200 GPUs (180 GB each)
-- 360 GB total GPU memory
-- 52+ CPU cores
-- 720 GB+ system RAM
+**Best performance (8-10 hours):**
+- 8× NVIDIA A100 GPUs (80 GB each) - FASTEST option
+- 640 GB total GPU memory
+- 240 CPU cores
 - Local NVMe storage for output
 
-**Also supports:**
-- 4× H100 (80 GB each)
+**Also excellent (~8-10 hours with ramdisk):**
+- 2× NVIDIA B200 GPUs (180 GB each) - 52+ CPUs, 1000+ GB RAM
+  - **Auto-enables ramdisk mode if >600 GB RAM** (20-30% speedup!)
+- 4× NVIDIA H100 GPUs (80 GB each) - 104 CPUs
+
+**Auto-adapts to:**
 - Any multi-GPU CUDA setup
-- Auto-adapts to available resources
+- Available CPU and memory resources
+- **Automatic ramdisk usage** if ≥600 GB RAM (writes to /dev/shm, copies back at end)
 
 ## Setup Instructions
 
@@ -101,8 +105,8 @@ Checks:
 **Auto resource detection:**
 - Detects GPU count and memory
 - Calculates optimal parallelization
-- B200 (180 GB): ~22 jobs per GPU = 44 total
-- H100 (80 GB): ~10 jobs per GPU = 20 total
+- B200 (180 GB): ~22 jobs per GPU
+- H100/A100 (80 GB): ~10 jobs per GPU
 - Adapts to CPU cores and RAM
 
 **Smart scheduling:**
@@ -111,10 +115,12 @@ Checks:
 - Assigns GPUs based on memory requirements
 - Uses CUDA MPS for efficient sharing
 
-**Expected runtime:**
-- 2× B200: ~10-11 hours
-- 4× H100: ~6-7 hours
-- 1× B200: ~20-22 hours
+**Expected runtime (250 trajectories):**
+- **8× A100: ~8-10 hours** (FASTEST - 80 parallel, 4.8 H100-eq compute)
+- **2× B200: ~8-10 hours** with ramdisk (44 parallel, 4.0 H100-eq, 1000+ GB RAM)
+- 2× B200: ~10-12 hours without ramdisk (if <600 GB RAM)
+- 4× H100: ~10-12 hours (40 parallel, 4.0 H100-eq compute)
+- 1× B200: ~20-22 hours (22 parallel, 2.0 H100-eq compute)
 
 ## Simulation Details
 
@@ -243,7 +249,9 @@ Measured on NAMD 3.0.2 with CUDA 12.8:
 | B200 | Large (110k atoms) | ~60 ns/day | 8 hours |
 | H100 (80 GB) | Medium | ~50 ns/day | 9.6 hours |
 
-With 2× B200 and smart scheduling: **~10 hours walltime for all 250 trajectories**
+**Overall walltime for all 250 trajectories:**
+- 8× A100 with smart scheduling: **~8-10 hours** (FASTEST)
+- 2× B200 or 4× H100: **~10-12 hours**
 
 ## Citations
 

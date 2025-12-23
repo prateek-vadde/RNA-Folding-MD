@@ -8,10 +8,66 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_DIR="$SCRIPT_DIR/../namd_configs"
-OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../output}"
 TOPOLOGY_DIR="$SCRIPT_DIR/../topology_files"
 
 NAMD_BIN="${NAMD_BIN:-namd3}"
+
+# Auto-detect optimal storage (CRITICAL for I/O performance)
+detect_optimal_storage() {
+    if [ -n "$OUTPUT_DIR" ]; then
+        echo "Using user-specified OUTPUT_DIR: $OUTPUT_DIR"
+        FINAL_OUTPUT_DIR="${FINAL_OUTPUT_DIR:-$OUTPUT_DIR}"
+        USE_RAMDISK=false
+        return
+    fi
+
+    # Check available RAM and /dev/shm size
+    if [ -f /proc/meminfo ]; then
+        RAM_GB=$(awk '/MemTotal/ {printf "%.0f", $2/1024/1024}' /proc/meminfo)
+        SHM_SIZE_GB=$(df -BG /dev/shm 2>/dev/null | awk 'NR==2 {print $2}' | sed 's/G//')
+    else
+        RAM_GB=0
+        SHM_SIZE_GB=0
+    fi
+
+    echo "System RAM: ${RAM_GB} GB"
+    echo "/dev/shm size: ${SHM_SIZE_GB} GB"
+
+    # Strategy: Use ramdisk if we have >600 GB RAM (allows 500 GB output + 100 GB buffer)
+    if [ "$RAM_GB" -gt 600 ] && [ "$SHM_SIZE_GB" -gt 400 ] && [ -w "/dev/shm" ]; then
+        echo ""
+        echo "🚀 RAMDISK MODE ENABLED! (20-30% speedup expected)"
+        echo "   Writing to: /dev/shm/md_output (memory speed: ~100 GB/s)"
+        OUTPUT_DIR="/dev/shm/md_output"
+        USE_RAMDISK=true
+
+        # Determine final destination for permanent storage
+        if [ -d "/local/nvme" ] && [ -w "/local/nvme" ]; then
+            FINAL_OUTPUT_DIR="/local/nvme/md_output"
+            echo "   Final copy to: $FINAL_OUTPUT_DIR (local NVMe)"
+        else
+            FINAL_OUTPUT_DIR="$SCRIPT_DIR/../output"
+            echo "   Final copy to: $FINAL_OUTPUT_DIR"
+        fi
+    else
+        # Fallback: Use NVMe or local storage
+        USE_RAMDISK=false
+        if [ -d "/local/nvme" ] && [ -w "/local/nvme" ]; then
+            OUTPUT_DIR="/local/nvme/md_output"
+            echo "✅ Using local NVMe: $OUTPUT_DIR"
+        elif [ -w "/tmp" ]; then
+            OUTPUT_DIR="/tmp/md_output"
+            echo "✅ Using /tmp (local storage): $OUTPUT_DIR"
+        else
+            OUTPUT_DIR="$SCRIPT_DIR/../output"
+            echo "⚠️  WARNING: Using default directory (may be slow if on NFS)"
+            echo "   For best performance, set OUTPUT_DIR to local NVMe storage!"
+        fi
+        FINAL_OUTPUT_DIR="$OUTPUT_DIR"
+    fi
+}
+
+detect_optimal_storage
 
 detect_resources() {
     echo "=============================================================================="
@@ -224,7 +280,64 @@ main() {
     echo "Failed: $(grep -l "ERROR\|FATAL" "$OUTPUT_DIR"/*.log 2>/dev/null | wc -l)"
     echo "Output: $OUTPUT_DIR"
     echo "=============================================================================="
-    
+
+    # Copy from ramdisk to permanent storage if needed
+    if [ "$USE_RAMDISK" = true ] && [ "$OUTPUT_DIR" != "$FINAL_OUTPUT_DIR" ]; then
+        echo ""
+        echo "=============================================================================="
+        echo "RAMDISK → PERMANENT STORAGE TRANSFER"
+        echo "=============================================================================="
+        echo "Copying ~500 GB from ramdisk to permanent storage..."
+        echo "Source: $OUTPUT_DIR"
+        echo "Destination: $FINAL_OUTPUT_DIR"
+        echo ""
+
+        COPY_START=$(date +%s)
+        mkdir -p "$FINAL_OUTPUT_DIR"
+
+        # Use rsync for progress and verification
+        if command -v rsync &> /dev/null; then
+            rsync -ah --info=progress2 "$OUTPUT_DIR/" "$FINAL_OUTPUT_DIR/"
+            COPY_EXIT=$?
+        else
+            cp -rv "$OUTPUT_DIR"/* "$FINAL_OUTPUT_DIR"/
+            COPY_EXIT=$?
+        fi
+
+        COPY_END=$(date +%s)
+        COPY_ELAPSED=$((COPY_END - COPY_START))
+        COPY_MINS=$((COPY_ELAPSED / 60))
+        COPY_SECS=$((COPY_ELAPSED % 60))
+
+        if [ $COPY_EXIT -eq 0 ]; then
+            echo ""
+            echo "✅ Transfer complete in ${COPY_MINS}m ${COPY_SECS}s"
+            echo "   Final output: $FINAL_OUTPUT_DIR"
+
+            # Verify file count matches
+            RAM_COUNT=$(find "$OUTPUT_DIR" -name "*.dcd" | wc -l)
+            FINAL_COUNT=$(find "$FINAL_OUTPUT_DIR" -name "*.dcd" | wc -l)
+
+            if [ "$RAM_COUNT" -eq "$FINAL_COUNT" ]; then
+                echo "   ✅ Verified: $FINAL_COUNT DCD files copied successfully"
+                echo ""
+                echo "   Cleaning up ramdisk..."
+                rm -rf "$OUTPUT_DIR"
+                echo "   ✅ Ramdisk freed (recovered ~500 GB RAM)"
+            else
+                echo "   ⚠️  WARNING: File count mismatch (ramdisk: $RAM_COUNT, final: $FINAL_COUNT)"
+                echo "   NOT deleting ramdisk - please verify manually!"
+            fi
+        else
+            echo ""
+            echo "❌ Transfer failed! Data still in ramdisk: $OUTPUT_DIR"
+            echo "   Please copy manually before reboot!"
+            exit 1
+        fi
+
+        echo "=============================================================================="
+    fi
+
     exit $EXIT_CODE
 }
 

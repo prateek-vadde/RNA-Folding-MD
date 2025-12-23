@@ -36,11 +36,11 @@ SYSTEMS = [
     ("regime12_1KQ2_350K", 350, "tiny"),
 ]
 
-# Simulation parameters - PERFORMANCE OPTIMIZED
+# Simulation parameters - RIGOROUS
 N_REPLICAS = 10
 SIM_LENGTH_NS = 20
 TIMESTEP_FS = 2.0
-OUTPUT_FREQ_PS = 10.0  # 10 ps = 2000 frames (was 2 ps = 10k frames - 5× less I/O!)
+OUTPUT_FREQ_PS = 2.0  # 2 ps = 10k frames (needed for capturing fast RNA dynamics)
 
 # Equilibration protocol
 EQUIL_MINIMIZE_STEPS = 10000
@@ -82,7 +82,7 @@ def create_namd_config(system_name, temperature, replica_id, system_size, base_d
     
     config = f"""#############################################################
 ## NAMD Config: {system_name} Rep {replica_id}
-## RIGOROUS + PERFORMANCE OPTIMIZED
+## RIGOROUS + MAXIMUM I/O OPTIMIZED
 #############################################################
 
 #############################################################
@@ -95,17 +95,19 @@ temperature {temperature}
 seed {seed}
 
 #############################################################
-## OUTPUT - I/O OPTIMIZED
+## OUTPUT - MAXIMUM I/O OPTIMIZED
 #############################################################
 outputName {output_name}
 binaryoutput yes
 binaryrestart yes
-restartfreq {output_freq}
+restartfreq {output_freq * 50}
 dcdfreq {output_freq}
-xstFreq {output_freq}
+xstFreq {output_freq * 5}
 outputEnergies {output_freq * 5}
 outputTiming {output_freq * 10}
 flushOutput yes
+wrapAll off
+wrapNearest off
 
 #############################################################
 ## INTEGRATION
@@ -203,9 +205,9 @@ run {npt_steps // 2}
 print "PRODUCTION: {SIM_LENGTH_NS} ns at {temperature}K"
 
 dcdfreq {output_freq}
-xstFreq {output_freq}
-restartfreq {output_freq}
-outputEnergies {output_freq}
+xstFreq {output_freq * 5}
+restartfreq {output_freq * 50}
+outputEnergies {output_freq * 5}
 
 run {total_prod_steps}
 
@@ -226,7 +228,7 @@ def main():
     print(f"Replicas: {N_REPLICAS}")
     print(f"Production: {SIM_LENGTH_NS} ns")
     print(f"Equilibration: {EQUIL_HEAT_PS + EQUIL_NVT_PS + EQUIL_NPT_PS:.1f} ns")
-    print(f"Output frequency: {OUTPUT_FREQ_PS} ps (I/O optimized)")
+    print(f"Output frequency: {OUTPUT_FREQ_PS} ps (captures fast RNA dynamics)")
     print(f"Total trajectories: {len(SYSTEMS) * N_REPLICAS}")
     print("="*80)
     print()
@@ -253,11 +255,11 @@ def main():
         f.write("# config_file\tsystem_size\ttemperature\n")
         f.writelines(metadata)
     
-    print(f"\n✅ Generated {count} OPTIMIZED configs")
+    print(f"\n✅ Generated {count} RIGOROUS configs")
     print(f"✅ Metadata: {config_dir}/system_metadata.txt")
     print("="*80)
-    print("\nPerformance optimizations:")
-    print(f"  • I/O: {OUTPUT_FREQ_PS} ps output (5× less than before)")
+    print("\nKey features:")
+    print(f"  • Output: {OUTPUT_FREQ_PS} ps (10,000 frames per trajectory)")
     print("  • Adaptive PME grid spacing by system size")
     print("  • Adaptive patch dimensions")
     print("  • CUDA SOA integration enabled")
